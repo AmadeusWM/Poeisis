@@ -10,18 +10,25 @@
 #include <vector>
 // headerfiles project
 #include "../libs/camera.h"
+#include "game//scene/world.h"
+// resources
+#include "resource_handling/resourceManager.h"
 
 class Game{
     private:
     // member variables
         GLFWwindow* m_window;
         Camera* m_camera;
+        float m_dt;
         double xPosCursor, yPosCursor;
-    // functions
+        World* m_world;
+    // methods
         void processInput();
         void render();
+        glm::vec2 mousePositionWorld() const;
     public:
         Game(int windowWidth, int windowHeight);
         ~Game();
+    // public methods
         void renderLoop();
 };

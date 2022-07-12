@@ -1,5 +1,5 @@
 #include "game.h"
-
+// cpp headers
 #include <iostream>
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
@@ -35,17 +35,18 @@ Game::Game(int windowWidth, int windowHeight)
     // framebuffersize callback to change the screen width and height
     glfwSetFramebufferSizeCallback(m_window, framebuffer_size_callback);
     glEnable(GL_DEPTH_TEST);
-    // Disable cursor
-    glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     // init shader objects
-
+    Shader particle_shader = ResourceManager::loadShader("particles/particle_shader.vert", "particles/particle_shader.frag", nullptr, "particle_shader");
 
     // init perspective projection matrix
-    glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)windowWidth / (float)windowHeight, 0.1f, 1000.0f);
-    // m_shader->setMatrix4fv("projection", proj);
+    glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(windowWidth), 0.0f, static_cast<float>(windowHeight), -1.0f, 100.0f); // for ortho view matrix
+    // glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)windowWidth / (float)windowHeight, 0.1f, 1000.0f);
+    particle_shader.setMatrix4("projection", projection, true);
 
     // init camera for camera view matrix etc.
-    m_camera = new Camera{glm::vec3{0.0f, 0.0f, 50.0f}};
+    m_camera = new Camera{glm::vec3{-windowWidth/2, -windowHeight/2, 20.0f}};
+    // init world
+    m_world = new World{};
 }
 
 Game::~Game()
@@ -55,14 +56,20 @@ Game::~Game()
 
 void Game::renderLoop()
 {
+	m_dt = 0.0f;
+	float oldTime = 0.0f;
     while (!glfwWindowShouldClose(m_window))
     {
+        // handle delta time
+        float newTime = glfwGetTime();
+        m_dt = newTime - oldTime;
+		if (m_dt > 0.1f) { m_dt = 0.1f; }
+        oldTime = newTime;
         // input
         processInput();
 
         // rendering commands
-
-        glClearColor(0.05f, 0.05f, 0.05f, 1.0f);               // sets the clear color
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);               // sets the clear color
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // uses clear color
         // do main functions
         render();
@@ -78,19 +85,16 @@ void Game::renderLoop()
 // ---------------------------------------------------------------------------------------------------------
 void Game::processInput()
 {
-    // m_shader->use();
     // set view matrix uniform according to current camera position
-    double xPosPrev = xPosCursor, yPosPrev = yPosCursor;
+    // m_camera->ProcessMouseMovement(xPosCursor - xPosPrev, yPosCursor - yPosPrev);
     glfwGetCursorPos(m_window, &xPosCursor, &yPosCursor);
-    m_camera->ProcessMouseMovement(xPosCursor - xPosPrev, yPosCursor - yPosPrev);
-    glm::mat4 view = m_camera->GetViewMatrix();
 
     if (glfwGetKey(m_window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(m_window, true);
-    if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS)
-        m_camera->ProcessKeyboard(Camera_Movement::FORWARD, 0.1);
-    if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS)
-        m_camera->ProcessKeyboard(Camera_Movement::BACKWARD, 0.1);
+    // if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS)
+    //     m_camera->ProcessKeyboard(Camera_Movement::FORWARD, 0.1);
+    // if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS)
+    //     m_camera->ProcessKeyboard(Camera_Movement::BACKWARD, 0.1);
     if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS)
         m_camera->ProcessKeyboard(Camera_Movement::LEFT, 0.1);
     if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS)
@@ -99,8 +103,13 @@ void Game::processInput()
         m_camera->ProcessKeyboard(Camera_Movement::UP, 0.1);
     if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         m_camera->ProcessKeyboard(Camera_Movement::DOWN, 0.1);
+    if (glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS){
+        m_world->addParticle(mousePositionWorld());
+    }
+    if (glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS){
+        m_world->removeParticle(mousePositionWorld());
+    }
 
-    // m_shader->setMatrix4fv("view", view); // set the uniform
 }
 /**
  * @brief : Draw every object and determine view matrix
@@ -108,6 +117,11 @@ void Game::processInput()
  */
 void Game::render()
 {
+    Shader shader = ResourceManager::getShader("particle_shader").use();
+    glm::mat4 view = m_camera->GetViewMatrix();
+    shader.setMatrix4("view", view); // set the uniform
+    m_world->handleTime(m_dt);
+    m_world->draw();
 }
 
 /**
@@ -120,4 +134,17 @@ void Game::render()
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
+}
+
+
+glm::vec2 Game::mousePositionWorld() const{
+    int width, height;
+    glfwGetWindowSize(m_window, &width, &height);
+
+    glm::vec3 camPos = m_camera->Position;
+    float xWorld = camPos.x / 10 + (xPosCursor) / 10;
+    float yWorld = camPos.y / 10 - (yPosCursor - height) / 10;
+
+    glm::vec2 posWorld{xWorld, yWorld};
+    return posWorld;
 }

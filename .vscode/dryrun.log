@@ -1,0 +1,5 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory '/home/wolfm/Documents/Projects/OpenGL development/Poeisis'
+g++ -std=c++17 -ggdb -Isrc src/game.cpp src/main.cpp src/shapes/square.cpp src/rendering/shader.cpp src/resource_handling/resourceManager.cpp src/game/particles/particle.cpp src/game/scene/world.cpp libs/glad.c -o bin/Poeisis.exe  -lGL -lglfw3 -lX11 -lXxf86vm -lXrandr -lpthread -lXi -ldl -lXinerama -lXcursor -lGLEW
+make: Leaving directory '/home/wolfm/Documents/Projects/OpenGL development/Poeisis'
+ 
